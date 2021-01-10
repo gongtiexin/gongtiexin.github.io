@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+
+<script id="hexo-configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    hostname: new URL('http://gongtiexin.github.io').hostname,
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.6.0',
+    exturl: false,
+    sidebar: {"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},
+    copycode: {"enable":false,"show_result":false,"style":null},
+    back2top: {"enable":true,"sidebar":false,"scrollpercent":false},
+    bookmark: {"enable":false,"color":"#222","save":"auto"},
+    fancybox: false,
+    mediumzoom: false,
+    lazyload: false,
+    pangu: false,
+    comments: {"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},
+    algolia: {
+      appID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    },
+    localsearch: {"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},
+    path: '',
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}
+  };
+</script>
+
+  <meta name="description" content="背景现在绝大部分异步请求都有如下类似的套路代码 1234loading &#x3D; true;ajax().finally(() &#x3D;&gt; &amp;#123;  loading &#x3D; false;&amp;#125;);  都 0202 年了，高速的网络会导致 loading 出现闪烁情况 Promise.all 的解决方案假设我有两个 ajax 请求时间分别是50ms和150ms，我现在">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ajax相应时间过快，页面loading闪烁？">
+<meta property="og:url" content="http://gongtiexin.github.io/2020/04/01/ajax-loading/index.html">
+<meta property="og:site_name" content="龚铁鑫的博客">
+<meta property="og:description" content="背景现在绝大部分异步请求都有如下类似的套路代码 1234loading &#x3D; true;ajax().finally(() &#x3D;&gt; &amp;#123;  loading &#x3D; false;&amp;#125;);  都 0202 年了，高速的网络会导致 loading 出现闪烁情况 Promise.all 的解决方案假设我有两个 ajax 请求时间分别是50ms和150ms，我现在">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-04-01T04:56:00.000Z">
+<meta property="article:modified_time" content="2021-01-10T04:27:25.636Z">
+<meta property="article:author" content="龚铁鑫">
+<meta property="article:tag" content="ajax">
+<meta property="article:tag" content="loading">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://gongtiexin.github.io/2020/04/01/ajax-loading/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>ajax相应时间过快，页面loading闪烁？ | 龚铁鑫的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">龚铁鑫的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://gongtiexin.github.io/2020/04/01/ajax-loading/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="龚铁鑫">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="龚铁鑫的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ajax相应时间过快，页面loading闪烁？
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-04-01 12:56:00" itemprop="dateCreated datePublished" datetime="2020-04-01T12:56:00+08:00">2020-04-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-01-10 12:27:25" itemprop="dateModified" datetime="2021-01-10T12:27:25+08:00">2021-01-10</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index">
+                    <span itemprop="name">技术</span>
+                  </a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>现在绝大部分异步请求都有如下类似的套路代码</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">loading &#x3D; true;</span><br><span class="line">ajax().finally(() &#x3D;&gt; &#123;</span><br><span class="line">  loading &#x3D; false;</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>都 0202 年了，高速的网络会导致 loading 出现闪烁情况</p>
+<h2 id="Promise-all-的解决方案"><a href="#Promise-all-的解决方案" class="headerlink" title="Promise.all 的解决方案"></a>Promise.all 的解决方案</h2><p>假设我有两个 ajax 请求时间分别是<code>50ms</code>和<code>150ms</code>，我现在希望不管是<code>50ms</code>还是<code>150ms</code>，loading 动画都有一个比较完整的展示时间</p>
+<p>这种情况只需要用一个延迟的 Promise.resolve()，通过 Promise.all 方法去拉长响应时间</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">const delay &#x3D; ms &#x3D;&gt; new Promise((resolve, _) &#x3D;&gt; setTimeout(resolve, ms));</span><br><span class="line"></span><br><span class="line">loading &#x3D; true;</span><br><span class="line">Promise.all([ajaxPromise, delay(300)])</span><br><span class="line">  .then(handleSuccess)</span><br><span class="line">  .catch(handleError)</span><br><span class="line">  .finally(() &#x3D;&gt; &#123;</span><br><span class="line">    loading &#x3D; false;</span><br><span class="line">  &#125;);</span><br></pre></td></tr></table></figure>
+
+<p>这种解决方案对于响应快的情况有点本末倒置的感觉</p>
+<h2 id="Promise-race-的解决方案"><a href="#Promise-race-的解决方案" class="headerlink" title="Promise.race 的解决方案"></a>Promise.race 的解决方案</h2><p>现在我希望响应时间超过<code>100ms</code>的情况才展示 loading 动画</p>
+<p>这种情况只需要用一个延迟的 Promise.reject()，通过 Promise.race 方法去和 ajax 竞态</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">const timeout &#x3D; ms &#x3D;&gt;</span><br><span class="line">  new Promise((_, reject) &#x3D;&gt; setTimeout(() &#x3D;&gt; reject(Symbol.for(&#39;timeout&#39;)), ms));</span><br><span class="line"></span><br><span class="line">Promise.race([ajaxPromise, timeout(100)])</span><br><span class="line">  .then(handleSuccess)</span><br><span class="line">  .catch(err &#x3D;&gt; &#123;</span><br><span class="line">    if (Symbol.for(&#39;timeout&#39;) &#x3D;&#x3D;&#x3D; err) &#123;</span><br><span class="line">      loading &#x3D; true;</span><br><span class="line">      return ajaxPromise</span><br><span class="line">        .then(handleSuccess)</span><br><span class="line">        .catch(handleError)</span><br><span class="line">        .finally(() &#x3D;&gt; &#123;</span><br><span class="line">          loading &#x3D; false;</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">    return handleError(err);</span><br><span class="line">  &#125;);</span><br></pre></td></tr></table></figure>
+
+<p>当我的响应时间为<code>101ms</code>的时候，闪烁还是无法避免的</p>
+<h2 id="Promise-all-和-Promise-race-的解决方案"><a href="#Promise-all-和-Promise-race-的解决方案" class="headerlink" title="Promise.all 和 Promise.race 的解决方案"></a>Promise.all 和 Promise.race 的解决方案</h2><p>现在我希望响应时间小于<code>100ms</code>时不展示 loading 动画，大于<code>100ms</code>时展示<code>300ms</code>的 loading 动画时间</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">const timeout &#x3D; ms &#x3D;&gt;</span><br><span class="line">  new Promise((_, reject) &#x3D;&gt; setTimeout(() &#x3D;&gt; reject(Symbol.for(&#39;timeout&#39;)), ms));</span><br><span class="line"></span><br><span class="line">const delay &#x3D; ms &#x3D;&gt; new Promise((resolve, _) &#x3D;&gt; setTimeout(resolve, ms));</span><br><span class="line"></span><br><span class="line">const request &#x3D; (&#123; config, target, timeoutTime &#x3D; 100, delayTime &#x3D; 300 &#125;) &#x3D;&gt; &#123;</span><br><span class="line">  &#x2F;&#x2F; 返回promise的ajax请求</span><br><span class="line">  const promise &#x3D; axios(config);</span><br><span class="line"></span><br><span class="line">  const startLoading &#x3D; target &#x3D;&gt; &#123;</span><br><span class="line">    if (!target) &#123;</span><br><span class="line">      return;</span><br><span class="line">    &#125;</span><br><span class="line">    &#x2F;&#x2F; startLoading</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  const endLoading &#x3D; () &#x3D;&gt; &#123;</span><br><span class="line">    &#x2F;&#x2F; endLoading</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  const handleSuccess &#x3D; data &#x3D;&gt; &#123;</span><br><span class="line">    &#x2F;&#x2F; 兼容Promise.all和Promise.race不同的返回值</span><br><span class="line">    const response &#x3D; Array.isArray(data) ? data[0] : data;</span><br><span class="line">    &#x2F;&#x2F; 处理成功的情况</span><br><span class="line">    return Promise.resolve(response.data);</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  const handleError &#x3D; (&#123; response &#125;) &#x3D;&gt; &#123;</span><br><span class="line">    &#x2F;&#x2F; 处理失败的情况</span><br><span class="line">    return Promise.reject(response);</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  return Promise.race([promise, timeout(timeoutTime)])</span><br><span class="line">    .then(handleSuccess)</span><br><span class="line">    .catch(err &#x3D;&gt; &#123;</span><br><span class="line">      if (Symbol.for(&#39;timeout&#39;) &#x3D;&#x3D;&#x3D; err) &#123;</span><br><span class="line">        startLoading(target);</span><br><span class="line">        return Promise.all([promise, delay(delayTime)])</span><br><span class="line">          .then(handleSuccess)</span><br><span class="line">          .catch(handleError)</span><br><span class="line">          .finally(() &#x3D;&gt; &#123;</span><br><span class="line">            endLoading();</span><br><span class="line">          &#125;);</span><br><span class="line">      &#125;</span><br><span class="line">      return handleError(err);</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>timeoutTime 和 delayTime 可以根据自己的网站调整</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/ajax/" rel="tag"># ajax</a>
+              <a href="/tags/loading/" rel="tag"># loading</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/12/31/react-hook-useState/" rel="prev" title="从零开始实现 React hook useState">
+      <i class="fa fa-chevron-left"></i> 从零开始实现 React hook useState
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/07/17/webpack-plugin/" rel="next" title="webpack plugin 实践">
+      webpack plugin 实践 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Promise-all-的解决方案"><span class="nav-number">2.</span> <span class="nav-text">Promise.all 的解决方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Promise-race-的解决方案"><span class="nav-number">3.</span> <span class="nav-text">Promise.race 的解决方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Promise-all-和-Promise-race-的解决方案"><span class="nav-number">4.</span> <span class="nav-text">Promise.all 和 Promise.race 的解决方案</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">龚铁鑫</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">16</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">21</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/gongtiexin" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;gongtiexin" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:tiexin.gong@qq.com" title="E-Mail → mailto:tiexin.gong@qq.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">龚铁鑫</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.6.0
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
